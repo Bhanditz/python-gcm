@@ -167,7 +167,7 @@ class GCM(object):
                 error = "GCM service error: %d" % e.code
                 raise GCMUnavailableException(error)
         except urllib2.URLError as e:
-            raise GCMConnectionException("There was an internal error in the GCM server while trying to process the request")
+            raise GCMConnectionException("There was an internal error in the GCM server while trying to process the request: %s" % e)
 
         if is_json:
             response = json.loads(response)
