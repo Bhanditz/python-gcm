@@ -4,7 +4,7 @@ setup(
     name='python-gcm-opr',
     version='0.1.5',
     packages=['gcm'],
-    license=open('LICENSE').read(),
+    license='MIT',
     author='Minh Nam Ngo',
     author_email='nam@namis.me',
     url='http://blog.namis.me/python-gcm/',
