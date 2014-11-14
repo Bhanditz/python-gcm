@@ -13,6 +13,7 @@ class GCMMalformedJsonException(GCMException): pass
 class GCMConnectionException(GCMException): pass
 class GCMAuthenticationException(GCMException): pass
 class GCMTooManyRegIdsException(GCMException): pass
+class GCMNoCollapseKeyException(GCMException): pass
 class GCMInvalidTtlException(GCMException): pass
 
 # Exceptions from Google responses
@@ -90,7 +91,7 @@ class GCM(object):
 
 
     def construct_payload(self, registration_ids, data=None, collapse_key=None,
-                            delay_while_idle=False, time_to_live=None, is_json=True, dry_run=False):
+                            delay_while_idle=False, time_to_live=None, is_json=True):
         """
         Construct the dictionary mapping of parameters.
         Encodes the dictionary into JSON if for json requests.
@@ -98,6 +99,7 @@ class GCM(object):
 
         :return constructed dict or JSON payload
         :raises GCMInvalidTtlException: if time_to_live is invalid
+        :raises GCMNoCollapseKeyException: if collapse_key is missing when time_to_live is used
         """
 
         if time_to_live:
@@ -121,12 +123,11 @@ class GCM(object):
 
         if time_to_live >= 0:
             payload['time_to_live'] = time_to_live
+            if collapse_key is None:
+                raise GCMNoCollapseKeyException("collapse_key is required when time_to_live is provided")
 
         if collapse_key:
             payload['collapse_key'] = collapse_key
-
-        if dry_run:
-            payload['dry_run'] = True
 
         if is_json:
             payload = json.dumps(payload)
@@ -218,7 +219,7 @@ class GCM(object):
         return []
 
     def plaintext_request(self, registration_id, data=None, collapse_key=None,
-                            delay_while_idle=False, time_to_live=None, retries=5, dry_run=False):
+                            delay_while_idle=False, time_to_live=None, retries=5):
         """
         Makes a plaintext request to GCM servers
 
@@ -233,7 +234,7 @@ class GCM(object):
 
         payload = self.construct_payload(
             registration_id, data, collapse_key,
-            delay_while_idle, time_to_live, False, dry_run
+            delay_while_idle, time_to_live, False
         )
 
         attempt = 0
@@ -251,15 +252,14 @@ class GCM(object):
         raise IOError("Could not make request after %d attempts" % attempt)
 
     def json_request(self, registration_ids, data=None, collapse_key=None,
-                        delay_while_idle=False, time_to_live=None, retries=5, dry_run=False):
+                        delay_while_idle=False, time_to_live=None, retries=5):
         """
         Makes a JSON request to GCM servers
 
         :param registration_ids: list of the registration ids
         :param data: dict mapping of key-value pairs of messages
         :return dict of response body from Google including multicast_id, success, failure, canonical_ids, etc
-        :raises GCMMissingRegistrationException: if the list of registration_ids is empty
-        :raises GCMTooManyRegIdsException: if the list of registration_ids exceeds 1000 items
+        :raises GCMMissingRegistrationException: if the list of registration_ids exceeds 1000 items
         """
 
         if not registration_ids:
@@ -272,7 +272,7 @@ class GCM(object):
         for attempt in range(retries):
             payload = self.construct_payload(
                 registration_ids, data, collapse_key,
-                delay_while_idle, time_to_live, True, dry_run
+                delay_while_idle, time_to_live
             )
             response = self.make_request(payload, is_json=True)
             info = self.handle_json_response(response, registration_ids)
