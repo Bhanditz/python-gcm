@@ -239,17 +239,19 @@ class GCM(object):
 
         attempt = 0
         backoff = self.BACKOFF_INITIAL_DELAY
+        error_msg = ''
         for attempt in range(retries):
             try:
                 response = self.make_request(payload, is_json=False)
                 return self.handle_plaintext_response(response)
-            except GCMUnavailableException:
+            except GCMUnavailableException as exc:
+                error_msg = str(exc)
                 sleep_time = backoff / 2 + random.randrange(backoff)
                 time.sleep(float(sleep_time) / 1000)
                 if 2 * backoff < self.MAX_BACKOFF_DELAY:
                     backoff *= 2
 
-        raise IOError("Could not make request after %d attempts" % attempt)
+        raise IOError("Could not make request after %d attempts: %s" % (attempt, error_msg))
 
     def json_request(self, registration_ids, data=None, collapse_key=None,
                         delay_while_idle=False, time_to_live=None, retries=5):
